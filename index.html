@@ -914,7 +914,7 @@ function authUI(){
 }
 
 // ---- login screen: Google · email+password · sign up · forgot · code ----
-const GITHUB_ON=false;   // flip to true once GitHub is enabled in Supabase → Authentication → Providers
+const GITHUB_ON=true;    // flip to true once GitHub is enabled in Supabase → Authentication → Providers
 let recovering=false,lastMail='';
 const REDIRECT=()=>location.origin+location.pathname;
 function loginUI(mode){
