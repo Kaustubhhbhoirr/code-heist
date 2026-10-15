@@ -909,7 +909,12 @@ function authUI(){
       if(!NAME_OK.test(n)){msg.className='msg err';msg.textContent='2–16 letters, numbers, spaces, _ or -';return}
       prog.name=n;save();setAcct(null);await sb.from('scores').update({name:n}).eq('user_id',user.id);
       msg.className='msg ok';msg.textContent='Saved! You are now '+n+'.';SFX.key()};
-    $('authout').onclick=async()=>{await sb.auth.signOut();$('authov').classList.remove('show')};
+    $('authout').onclick=async()=>{const b=$('authout');b.disabled=true;b.textContent='Signing out…';
+      clearTimeout(pushT);
+      const{error}=await sb.auth.signOut();
+      if(error)await sb.auth.signOut({scope:'local'});   // server unreachable: still forget this device's session
+      user=null;recovering=false;setAcct(null);$('authov').classList.remove('show');
+      toast('👋 Signed out','Your progress stays on this device. Log in again any time to sync.','blue')};
   } else loginUI(recovering?'newpass':'login');
 }
 
@@ -1033,10 +1038,12 @@ $('acct').onclick=()=>{SFX.click();$('authov').querySelector('.bar span').textCo
 $('authx').onclick=()=>$('authov').classList.remove('show');
 if(window.supabase&&!SB_URL.startsWith('YOUR')){
   sb=window.supabase.createClient(SB_URL,SB_KEY);setAcct(null);
-  sb.auth.onAuthStateChange((ev,session)=>{const was=user&&user.id;user=session?session.user:null;setAcct(null);
-    if(ev==='PASSWORD_RECOVERY'){recovering=true;setTimeout(()=>{$('authov').querySelector('.bar span').textContent='💾 Cloud_Save.exe';loginUI('newpass');$('authov').classList.add('show')},300)}
+  // Supabase holds an auth lock while this callback runs: calling sb.* inside it deadlocks
+  // (cloud sync and sign-out would hang), so do the real work on the next tick.
+  sb.auth.onAuthStateChange((ev,session)=>setTimeout(()=>{const was=user&&user.id;user=session?session.user:null;setAcct(null);
+    if(ev==='PASSWORD_RECOVERY'){recovering=true;$('authov').querySelector('.bar span').textContent='💾 Cloud_Save.exe';loginUI('newpass');$('authov').classList.add('show')}
     if(user&&user.id!==was)cloudPull();
-    if($('authov').classList.contains('show'))authUI()});
+    if($('authov').classList.contains('show'))authUI()},0));
 }
 
 loadLevel(cur);renderTrophies();
