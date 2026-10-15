@@ -931,14 +931,9 @@ function loginUI(mode){
       ${mail}${pass('ap','Password','current-password')}
       <div id="newbox" hidden><p style="margin:4px 0 0"><b>New here?</b> Repeat the password to create your account:</p>${pass('ap2','Repeat password','new-password')}</div>
       <div class="row"><button class="go" id="ago">CONTINUE</button><button id="alater">Later</button></div>
-      <p class="links" id="alinks"><a href="#" data-m="forgot">Forgot password?</a><a href="#" data-m="code">Sign in with an email code instead</a></p>`,
+      <p class="links" id="alinks"><a href="#" data-m="forgot">Forgot password?</a></p>`,
     forgot:`<h2>Reset password</h2><p>We'll email you a link to choose a new password.</p>${mail}
       <div class="row"><button class="go" id="ago">SEND RESET LINK</button></div>
-      <p class="links"><a href="#" data-m="login">← Back to log in</a></p>`,
-    code:`<h2>Email code</h2><p>No password needed. We email you a 6-digit code: handy when the email is on your phone but you play on a laptop.</p>${mail}
-      <div class="row"><button class="go" id="ago">SEND CODE</button></div>
-      <div id="codebox" hidden><input id="ac" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="letter-spacing:.3em;text-align:center;font-size:20px">
-        <div class="row"><button class="go" id="av">SIGN IN</button></div></div>
       <p class="links"><a href="#" data-m="login">← Back to log in</a></p>`,
     newpass:`<h2>New password</h2><p>Choose a new password for your account.</p>${pass('ap','New password (6+ characters)','new-password')}
       <div class="row"><button class="go" id="ago">SAVE PASSWORD</button></div>`,
@@ -979,14 +974,6 @@ function loginUI(mode){
     forgot:()=>busy(go,async()=>{if(!okMail())return;say('Sending…');
       const{error}=await sb.auth.resetPasswordForEmail(em(),{redirectTo:REDIRECT()});
       error?say(error.message,'err'):(say('📬 Reset link sent. Open it on the device where you want to play.','ok'),SFX.key())}),
-    code:()=>busy(go,async()=>{if(!okMail())return;say('Sending…');
-      const{error}=await sb.auth.signInWithOtp({email:em(),options:{emailRedirectTo:REDIRECT()}});
-      if(error)return say(error.message,'err');
-      $('codebox').hidden=false;go.textContent='RESEND';$('ac').focus();say('📬 Sent! Type the 6-digit code from the email.','ok');SFX.key();
-      const verify=()=>busy($('av'),async()=>{const tk=$('ac').value.replace(/\D/g,'');if(tk.length<6)return say('The code has 6 digits.','err');say('Checking…');
-        const{error}=await sb.auth.verifyOtp({email:em(),token:tk,type:'email'});
-        if(error)say(/expired|invalid/i.test(error.message)?'Wrong or expired code. Press RESEND.':error.message,'err')});
-      $('av').onclick=verify;$('ac').onkeydown=e=>{if(e.key==='Enter')verify()}}),
     newpass:()=>busy(go,async()=>{const p=$('ap').value;if(p.length<6)return say('Password needs 6+ characters.','err');
       const{error}=await sb.auth.updateUser({password:p});
       if(error)return say(error.message,'err');recovering=false;say('✔ Password saved. You are logged in.','ok');SFX.key();setTimeout(authUI,1200)}),
