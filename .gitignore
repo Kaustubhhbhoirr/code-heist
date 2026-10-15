@@ -1,0 +1,10 @@
+# editor / assistant config
+.claude/
+.vscode/
+
+# old game prototypes (kept locally, not part of Code Heist)
+old-prototypes/
+
+# OS junk
+Thumbs.db
+.DS_Store
