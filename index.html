@@ -944,7 +944,9 @@ function loginUI(mode){
       <div class="row"><button class="go" id="ago">SAVE PASSWORD</button></div>`,
   };
   box.innerHTML=V[mode]+'<div class="msg" id="amsg"></div>';
-  const msg=$('amsg'),say=(t,c)=>{msg.className='msg '+(c||'');msg.textContent=t};
+  const msg=$('amsg'),say=(t,c)=>{
+    if(c==='err'&&/rate limit|too many/i.test(t))t='📮 Our mail robot is taking a short break (too many emails this hour). Use "Continue with GitHub", or try again in a little while.';
+    msg.className='msg '+(c||'');msg.textContent=t};
   const em=()=>{const v=($('am')||{}).value;lastMail=(v||lastMail).trim();return lastMail};
   const okMail=()=>/^\S+@\S+\.\S+$/.test(em())||(say('That email looks off.','err'),false);
   const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}finally{btn.disabled=false}};
