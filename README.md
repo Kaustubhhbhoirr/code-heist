@@ -2,7 +2,7 @@
 
 **Hack the vault with Python.** Write real Python code to guide a thief past lasers, guards and security cameras, grab the 💎 and escape.
 
-▶ **Play now:** https://kaustubhhbhoirr.github.io/code-heist/
+▶ **Play now:** https://code-heist-blond.vercel.app/
 
 No install, no account. It runs entirely in your browser (Python runs locally via [Pyodide](https://pyodide.org)).
 

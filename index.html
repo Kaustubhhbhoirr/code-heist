@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Code Heist</title>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Space+Mono:wght@400;700&family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -160,6 +161,18 @@
 
   /* ---------- v3 additions ---------- */
   .chip.btn{cursor:pointer;user-select:none}
+  .chip.on{background:var(--blue);color:#fff}
+  #authov{position:fixed;inset:0;background:rgba(35,32,32,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:12}
+  #authov.show{display:flex}
+  #authov .card{max-width:380px;width:100%;background:var(--cream);border:var(--b);border-radius:12px;box-shadow:8px 8px 0 var(--ink);overflow:hidden;animation:popin .45s cubic-bezier(.2,1.7,.4,1)}
+  #authov .ctl i{cursor:pointer}
+  #authc{padding:18px;font-size:13px;line-height:1.6}
+  #authc h2{margin:0 0 6px;font:900 22px var(--head);text-transform:uppercase}
+  #authc input{width:100%;font:700 14px var(--mono);padding:10px 12px;border:var(--b);border-radius:8px;background:#fff;margin:10px 0;box-shadow:inset 2px 2px 0 rgba(0,0,0,.08)}
+  #authc input:focus{outline:3px solid var(--yellow)}
+  #authc .msg{margin-top:10px;font-weight:700}
+  #authc .msg.err{color:#c8321a}#authc .msg.ok{color:#23794a}
+  #authc ul{margin:8px 0;padding-left:18px}
   #docs{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;gap:8px!important;max-height:300px;overflow:auto;padding:2px 6px 6px 2px}
   #docs div{padding:6px 8px!important;font-size:11.5px!important}
   #docs div.new{background:#fff4c4;animation:boing .5s}
@@ -226,6 +239,7 @@
     <div class="brand"><div class="logo">🕵️</div>
       <div><h1><span class="o">CODE</span> <span class="b">HEIST</span></h1><div class="tag">&gt; hack the vault with python</div></div></div>
     <div class="chips">
+      <div class="chip btn" id="acct" title="Cloud save" hidden>💾 SIGN IN</div>
       <div class="chip btn" id="mute" title="Sound on/off">🔊</div>
       <div class="chip g">💰 <b id="loot">0</b></div><div class="chip y">★ <b id="starsTot">0</b></div></div>
   </header>
@@ -275,6 +289,7 @@
 </div>
 <div id="ov"><div class="card"><div class="bar purple"><span>★ Mission_Report</span><span class="ctl"><i class="x">×</i></span></div><div id="ovc"></div></div></div>
 <div id="toasts"></div>
+<div id="authov"><div class="card"><div class="bar blue"><span>💾 Cloud_Save.exe</span><span class="ctl"><i class="x" id="authx">×</i></span></div><div id="authc"></div></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -414,7 +429,7 @@ function genMaze(cw,ch,r,nd,nl){
 let prog=store.get('ch_prog',{});
 prog.stars=prog.stars||{};prog.best=prog.best||{};prog.code=prog.code||{};prog.ach=prog.ach||{};
 prog.busts=prog.busts||0;prog.endless=prog.endless||{streak:0,best:0,seed:12345};prog.skin=prog.skin||'classic';
-const save=()=>store.set('ch_prog',prog);
+const save=()=>{store.set('ch_prog',prog);cloudPush()};
 let cur=Math.min(store.get('ch_cur',0),EI);
 const unlocked=upto=>{const s=new Set();for(let i=0;i<=Math.min(upto,EI-1);i++)LEVELS[i].unlock.forEach(u=>s.add(u));return s};
 function maxOpen(){let m=0;while(m<EI-1&&prog.stars[m])m++;return m}
@@ -839,6 +854,63 @@ function confetti(){
     d.style.setProperty('--dx',(Math.random()*200-100)+'px');d.style.setProperty('--r',(Math.random()*900-450)+'deg');
     d.style.animationDuration=(1.6+Math.random()*1.6)+'s';d.style.animationDelay=(Math.random()*.4)+'s';
     document.body.appendChild(d);setTimeout(()=>d.remove(),4000)}}
+
+// ================= CLOUD SAVE (Supabase) =================
+// Public values: safe to ship. Row-level security keeps each save private.
+const SB_URL='https://vqzwkpaezcjmsawzhgsw.supabase.co';
+const SB_KEY='sb_publishable_achzYDSbznSPiCdxGrLFYQ_nFtGI-vc';
+let sb=null,user=null,pushT=null,syncing=false;
+function mergeSaves(a,b){            // combine two saves, keeping the best of both
+  const m={...b,...a};
+  m.stars={...b.stars};for(const[k,v]of Object.entries(a.stars||{}))m.stars[k]=Math.max(v,m.stars[k]||0);
+  m.best={...b.best};for(const[k,v]of Object.entries(a.best||{})){const o=m.best[k];m.best[k]=o?{t:Math.min(v.t,o.t),l:Math.min(v.l,o.l)}:v}
+  m.code={...(b.code||{}),...(a.code||{})};m.ach={...(b.ach||{}),...(a.ach||{})};
+  m.busts=Math.max(a.busts||0,b.busts||0);
+  m.endless={...(a.endless||{streak:0,seed:12345}),best:Math.max(a.endless?.best||0,b.endless?.best||0)};
+  return m}
+function cloudPush(){if(!sb||!user||syncing)return;clearTimeout(pushT);
+  pushT=setTimeout(async()=>{const{error}=await sb.from('saves').upsert({user_id:user.id,data:prog,updated_at:new Date().toISOString()});
+    setAcct(error?'⚠ SYNC':null)},1500)}
+async function cloudPull(){
+  syncing=true;setAcct('☁ SYNCING…');
+  const{data,error}=await sb.from('saves').select('data').eq('user_id',user.id).maybeSingle();
+  if(error){syncing=false;setAcct('⚠ SYNC');return}
+  if(data&&data.data){Object.assign(prog,mergeSaves(prog,data.data));store.set('ch_prog',prog);
+    loadLevel(Math.min(cur,maxOpen()));renderTrophies()}
+  syncing=false;cloudPush();setAcct(null)}
+function setAcct(label){const c=$('acct');c.hidden=false;
+  c.classList.toggle('on',!!user);c.textContent=label||(user?'☁ '+(user.email||'player').split('@')[0].slice(0,12):'💾 SIGN IN')}
+function authUI(){
+  const box=$('authc');
+  if(user){box.innerHTML=`<h2>Saved to cloud ☁</h2><p>Signed in as <b>${esc(user.email||'')}</b>.</p>
+      <p>Your stars, code, skins, trophies and endless streak sync automatically. Sign in on any device to continue.</p>
+      <div class="row"><button class="go" id="authdone">COOL</button><button id="authout">Sign out</button></div>`;
+    $('authdone').onclick=()=>$('authov').classList.remove('show');
+    $('authout').onclick=async()=>{await sb.auth.signOut();$('authov').classList.remove('show')};
+  } else {box.innerHTML=`<h2>Save your heists</h2><p>Sign in to keep your progress on every phone and laptop:</p>
+      <ul><li>stars, best scores and your code</li><li>skins, trophies and endless streak</li></ul>
+      <p>No password. We email you a magic link.</p>
+      <input type="email" id="authmail" placeholder="you@email.com" autocomplete="email">
+      <div class="row"><button class="go" id="authsend">SEND LINK</button><button id="authlater">Later</button></div><div class="msg" id="authmsg"></div>`;
+    $('authlater').onclick=()=>$('authov').classList.remove('show');
+    const send=async()=>{const em=$('authmail').value.trim(),msg=$('authmsg');
+      if(!/^\S+@\S+\.\S+$/.test(em)){msg.className='msg err';msg.textContent='That email looks off.';return}
+      $('authsend').disabled=true;msg.className='msg';msg.textContent='Sending…';
+      const{error}=await sb.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}});
+      $('authsend').disabled=false;
+      if(error){msg.className='msg err';msg.textContent=error.message}
+      else{msg.className='msg ok';msg.textContent='📬 Check your inbox and tap the link. This tab will sign in by itself.';SFX.key()}};
+    $('authsend').onclick=send;$('authmail').onkeydown=e=>{if(e.key==='Enter')send()};
+    setTimeout(()=>$('authmail').focus(),50)}
+}
+$('acct').onclick=()=>{SFX.click();authUI();$('authov').classList.add('show')};
+$('authx').onclick=()=>$('authov').classList.remove('show');
+if(window.supabase&&!SB_URL.startsWith('YOUR')){
+  sb=window.supabase.createClient(SB_URL,SB_KEY);setAcct(null);
+  sb.auth.onAuthStateChange((ev,session)=>{const was=user&&user.id;user=session?session.user:null;setAcct(null);
+    if(user&&user.id!==was)cloudPull();
+    if($('authov').classList.contains('show'))authUI()});
+}
 
 loadLevel(cur);renderTrophies();
 </script>
