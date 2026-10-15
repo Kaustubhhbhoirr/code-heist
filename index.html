@@ -164,7 +164,7 @@
   .chip.on{background:var(--blue);color:#fff}
   #authov{position:fixed;inset:0;background:rgba(35,32,32,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:12}
   #authov.show{display:flex}
-  #authov .card{max-width:380px;width:100%;background:var(--cream);border:var(--b);border-radius:12px;box-shadow:8px 8px 0 var(--ink);overflow:hidden;animation:popin .45s cubic-bezier(.2,1.7,.4,1)}
+  #authov .card{max-height:calc(100vh - 32px);overflow:auto;max-width:380px;width:100%;background:var(--cream);border:var(--b);border-radius:12px;box-shadow:8px 8px 0 var(--ink);overflow:hidden;animation:popin .45s cubic-bezier(.2,1.7,.4,1)}
   #authov .ctl i{cursor:pointer}
   #authc{padding:18px;font-size:13px;line-height:1.6}
   #authc h2{margin:0 0 6px;font:900 22px var(--head);text-transform:uppercase}
@@ -173,6 +173,20 @@
   #authc .msg{margin-top:10px;font-weight:700}
   #authc .msg.err{color:#c8321a}#authc .msg.ok{color:#23794a}
   #authc ul{margin:8px 0;padding-left:18px}
+  .gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;font:700 14px var(--mono);padding:11px;margin-top:6px}
+  .or{display:flex;align-items:center;gap:10px;margin:12px 0 2px;font:700 10px var(--pix);color:#8a8070}
+  .or::before,.or::after{content:"";flex:1;border-top:2px dashed #cdbf9f}
+  #authc .links{display:flex;flex-direction:column;gap:4px;margin:12px 0 0;font-size:12px}
+  #authc .links a{color:var(--blue);font-weight:700}
+  #authc input+input{margin-top:0}
+  .lbbtn{background:var(--yellow);font:700 12px var(--pix);padding:5px 10px;border-width:2px;box-shadow:3px 3px 0 var(--ink)}
+  table.lb{width:100%;border-collapse:separate;border-spacing:0 6px;font:700 13px var(--mono)}
+  table.lb td{background:#fff;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:6px 8px}
+  table.lb td:first-child{border-left:2px solid var(--ink);border-radius:8px 0 0 8px;width:44px;text-align:center}
+  table.lb td:last-child{border-right:2px solid var(--ink);border-radius:0 8px 8px 0;text-align:right;white-space:nowrap}
+  table.lb tr.me td{background:var(--yellow)}
+  .lbnote{margin:10px 0 0;font-weight:700}
+  .toast a{color:var(--blue);font-weight:700}
   #docs{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;gap:8px!important;max-height:300px;overflow:auto;padding:2px 6px 6px 2px}
   #docs div{padding:6px 8px!important;font-size:11.5px!important}
   #docs div.new{background:#fff4c4;animation:boing .5s}
@@ -239,7 +253,7 @@
     <div class="brand"><div class="logo">🕵️</div>
       <div><h1><span class="o">CODE</span> <span class="b">HEIST</span></h1><div class="tag">&gt; hack the vault with python</div></div></div>
     <div class="chips">
-      <div class="chip btn" id="acct" title="Cloud save" hidden>💾 SIGN IN</div>
+      <div class="chip btn" id="acct" title="Log in / cloud save" hidden>👤 LOG IN</div>
       <div class="chip btn" id="mute" title="Sound on/off">🔊</div>
       <div class="chip g">💰 <b id="loot">0</b></div><div class="chip y">★ <b id="starsTot">0</b></div></div>
   </header>
@@ -653,6 +667,7 @@ function renderGoal(){
     $('goal').innerHTML=`<div class="job">♾ ENDLESS · BOT MODE</div><h3>Endless Bot</h3>
       <div class="boss"><div class="av">🎩</div><div class="say"><b>THE BOSS</b><span id="bossTxt"></span></div></div>
       <div class="streak"><div id="stk">STREAK<b>${e.streak}</b></div><div>BEST<b>${e.best}</b></div><div>HEIST<b>#${e.streak+1}</b></div></div>
+      <button class="lbbtn" onclick="openLB()" style="margin-bottom:10px">🏆 RANKS</button>
       <label class="auto"><input type="checkbox" id="auto" ${store.get('ch_auto',true)?'checked':''}> AUTO-RUN next heist after an escape</label>
       <details><summary>Need a hint?</summary><pre class="hint">Your Boss Maze wall-follower from Job 15 is a great start.\nAdd: grab every diamond, use is_safe() for lasers.</pre></details>`;
     $('auto').onchange=e=>store.set('ch_auto',e.target.checked);
@@ -661,7 +676,7 @@ function renderGoal(){
       <div class="boss"><div class="av">🎩</div><div class="say"><b>THE BOSS</b><span id="bossTxt"></span></div></div>
       <div class="targets"><span>★ escape</span><span>★ ≤ <b>${L.par}</b> ticks</span><span>★ ≤ <b>${L.lines}</b> lines</span>
       ${prog.best[i]?`<span>best <b>${prog.best[i].t}</b>t · <b>${prog.best[i].l}</b>l</span>`:''}</div>
-      <details><summary>Need a hint?</summary><pre class="hint">${esc(L.hint)}</pre></details>`;
+      <div class="row" style="align-items:flex-start"><details><summary>Need a hint?</summary><pre class="hint">${esc(L.hint)}</pre></details><button class="lbbtn" onclick="openLB()">🏆 RANKS</button></div>`;
   }
   typewrite($('bossTxt'),L.text);
 }
@@ -703,7 +718,7 @@ function finish(status,msg){
     SFX.win();
     const t=W.tick,l=countLines(code.value),s=1+(t<=L.par)+(l<=L.lines);
     const prev=prog.stars[cur]||0,first=!prev;prog.stars[cur]=Math.max(prev,s);
-    const b=prog.best[cur]||{t:1e9,l:1e9};prog.best[cur]={t:Math.min(b.t,t),l:Math.min(b.l,l)};save();
+    const b=prog.best[cur]||{t:1e9,l:1e9};prog.best[cur]={t:Math.min(b.t,t),l:Math.min(b.l,l)};save();submitScore(cur);
     log(`✔ Escaped with ${W.got} 💎 in ${t} ticks, ${l} lines.`,'ok');renderLevels();
     award('first');if(l<=3)award('oneliner');
     if((W.lasers.length||W.guards.length||W.cams.length)&&W.waits===0)award('ghost');
@@ -716,7 +731,7 @@ function finish(status,msg){
       ${s>prev?`<p>+$${((s-prev)*1000).toLocaleString()} loot</p>`:''}
       ${next&&first&&nu?`<div class="unlock">New gadgets: ${nu}</div>`:''}
       ${cur===EI-1&&first?'<div class="unlock">♾ ENDLESS BOT MODE unlocked!</div>':''}
-      <div class="row" style="justify-content:center"><button onclick="$('ov').classList.remove('show')">Improve</button>
+      <div class="row" style="justify-content:center"><button onclick="$('ov').classList.remove('show')">Improve</button><button onclick="$('ov').classList.remove('show');openLB(${cur})">🏆 Ranks</button>
       ${next?`<button class="go" onclick="$('ov').classList.remove('show');loadLevel(${cur+1})">Next job →</button>`:`<button class="go" onclick="$('ov').classList.remove('show');loadLevel(${EI})">♾ Endless →</button>`}</div>`;
     $('ov').classList.add('show');confetti();
   }
@@ -729,7 +744,8 @@ function finish(status,msg){
 function finishEndless(status,msg){
   const e=prog.endless;
   if(status==='goal'){
-    e.streak++;e.best=Math.max(e.best,e.streak);e.seed=(Math.random()*1e9)>>>0;save();SFX.win();confetti();
+    const nb=e.streak+1>e.best;
+    e.streak++;e.best=Math.max(e.best,e.streak);e.seed=(Math.random()*1e9)>>>0;save();SFX.win();confetti();if(nb)submitScore(EI);
     log(`✔ Heist #${e.streak} cracked in ${W.tick} ticks! Streak ${e.streak}.`,'ok');
     if(e.streak>=5)award('bot5');if(e.streak>=20)award('bot20');
     renderGoal();renderLevels();const k=$('stk');k&&k.classList.add('hot');
@@ -877,37 +893,140 @@ async function cloudPull(){
   if(error){syncing=false;setAcct('⚠ SYNC');return}
   if(data&&data.data){Object.assign(prog,mergeSaves(prog,data.data));store.set('ch_prog',prog);
     loadLevel(Math.min(cur,maxOpen()));renderTrophies()}
-  syncing=false;cloudPush();setAcct(null)}
+  syncing=false;
+  if(!prog.name){prog.name='Thief'+(1000+Math.floor(Math.random()*9000));
+    toast('🕵️ Pick a thief name','You show up on leaderboards as <b>'+prog.name+'</b>. Tap ☁ in the header to change it.','blue')}
+  save();setAcct(null);backfillScores()}
 function setAcct(label){const c=$('acct');c.hidden=false;
-  c.classList.toggle('on',!!user);c.textContent=label||(user?'☁ '+(user.email||'player').split('@')[0].slice(0,12):'💾 SIGN IN')}
+  c.classList.toggle('on',!!user);c.textContent=label||(user?'☁ '+(prog.name||'player'):'👤 LOG IN')}
 function authUI(){
   const box=$('authc');
-  if(user){box.innerHTML=`<h2>Saved to cloud ☁</h2><p>Signed in as <b>${esc(user.email||'')}</b>.</p>
-      <p>Your stars, code, skins, trophies and endless streak sync automatically. Sign in on any device to continue.</p>
-      <div class="row"><button class="go" id="authdone">COOL</button><button id="authout">Sign out</button></div>`;
-    $('authdone').onclick=()=>$('authov').classList.remove('show');
+  if(user&&!recovering){box.innerHTML=`<h2>Saved to cloud ☁</h2><p>Signed in as <b>${esc(user.email||'')}</b>. Everything syncs automatically.</p>
+      <p><b>Thief name</b> (shown on leaderboards):</p>
+      <input id="authname" maxlength="16" value="${esc(prog.name||'')}" placeholder="e.g. NightOwl">
+      <div class="row"><button class="go" id="authsave">SAVE NAME</button><button id="authout">Sign out</button></div><div class="msg" id="authmsg"></div>`;
+    $('authsave').onclick=async()=>{const n=$('authname').value.trim(),msg=$('authmsg');
+      if(!NAME_OK.test(n)){msg.className='msg err';msg.textContent='2–16 letters, numbers, spaces, _ or -';return}
+      prog.name=n;save();setAcct(null);await sb.from('scores').update({name:n}).eq('user_id',user.id);
+      msg.className='msg ok';msg.textContent='Saved! You are now '+n+'.';SFX.key()};
     $('authout').onclick=async()=>{await sb.auth.signOut();$('authov').classList.remove('show')};
-  } else {box.innerHTML=`<h2>Save your heists</h2><p>Sign in to keep your progress on every phone and laptop:</p>
-      <ul><li>stars, best scores and your code</li><li>skins, trophies and endless streak</li></ul>
-      <p>No password. We email you a magic link.</p>
-      <input type="email" id="authmail" placeholder="you@email.com" autocomplete="email">
-      <div class="row"><button class="go" id="authsend">SEND LINK</button><button id="authlater">Later</button></div><div class="msg" id="authmsg"></div>`;
-    $('authlater').onclick=()=>$('authov').classList.remove('show');
-    const send=async()=>{const em=$('authmail').value.trim(),msg=$('authmsg');
-      if(!/^\S+@\S+\.\S+$/.test(em)){msg.className='msg err';msg.textContent='That email looks off.';return}
-      $('authsend').disabled=true;msg.className='msg';msg.textContent='Sending…';
-      const{error}=await sb.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}});
-      $('authsend').disabled=false;
-      if(error){msg.className='msg err';msg.textContent=error.message}
-      else{msg.className='msg ok';msg.textContent='📬 Check your inbox and tap the link. This tab will sign in by itself.';SFX.key()}};
-    $('authsend').onclick=send;$('authmail').onkeydown=e=>{if(e.key==='Enter')send()};
-    setTimeout(()=>$('authmail').focus(),50)}
+  } else loginUI(recovering?'newpass':'login');
 }
-$('acct').onclick=()=>{SFX.click();authUI();$('authov').classList.add('show')};
+
+// ---- login screen: Google · email+password · sign up · forgot · code ----
+const GOOGLE_ON=false;   // flip to true once Google is enabled in Supabase → Authentication → Providers
+let recovering=false,lastMail='';
+const REDIRECT=()=>location.origin+location.pathname;
+function loginUI(mode){
+  const box=$('authc'),mail=`<input type="email" id="am" placeholder="you@email.com" autocomplete="email" value="${esc(lastMail)}">`;
+  const pass=(id,ph,ac)=>`<input type="password" id="${id}" placeholder="${ph}" autocomplete="${ac}" minlength="6">`;
+  const google=`<button class="gbtn" id="ag"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</button><div class="or"><span>or</span></div>`,googleBtn=GOOGLE_ON?google:"";
+  const V={
+    login:`<h2>Log in</h2><p>Keep your heists on every device and get on the leaderboards.</p>${googleBtn}
+      ${mail}${pass('ap','Password','current-password')}
+      <div class="row"><button class="go" id="ago">LOG IN</button><button id="alater">Later</button></div>
+      <p class="links"><a href="#" data-m="signup">New here? Create account</a><a href="#" data-m="forgot">Forgot password?</a><a href="#" data-m="code">Sign in with an email code</a></p>`,
+    signup:`<h2>Create account</h2><p>Free. Your progress so far comes with you.</p>${googleBtn}
+      ${mail}${pass('ap','Password (6+ characters)','new-password')}${pass('ap2','Repeat password','new-password')}
+      <div class="row"><button class="go" id="ago">SIGN UP</button></div>
+      <p class="links"><a href="#" data-m="login">Have an account? Log in</a></p>`,
+    forgot:`<h2>Reset password</h2><p>We'll email you a link to choose a new password.</p>${mail}
+      <div class="row"><button class="go" id="ago">SEND RESET LINK</button></div>
+      <p class="links"><a href="#" data-m="login">← Back to log in</a></p>`,
+    code:`<h2>Email code</h2><p>No password needed. We email you a 6-digit code: handy when the email is on your phone but you play on a laptop.</p>${mail}
+      <div class="row"><button class="go" id="ago">SEND CODE</button></div>
+      <div id="codebox" hidden><input id="ac" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="letter-spacing:.3em;text-align:center;font-size:20px">
+        <div class="row"><button class="go" id="av">SIGN IN</button></div></div>
+      <p class="links"><a href="#" data-m="login">← Back to log in</a></p>`,
+    newpass:`<h2>New password</h2><p>Choose a new password for your account.</p>${pass('ap','New password (6+ characters)','new-password')}
+      <div class="row"><button class="go" id="ago">SAVE PASSWORD</button></div>`,
+  };
+  box.innerHTML=V[mode]+'<div class="msg" id="amsg"></div>';
+  const msg=$('amsg'),say=(t,c)=>{msg.className='msg '+(c||'');msg.textContent=t};
+  const em=()=>{const v=($('am')||{}).value;lastMail=(v||lastMail).trim();return lastMail};
+  const okMail=()=>/^\S+@\S+\.\S+$/.test(em())||(say('That email looks off.','err'),false);
+  const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}finally{btn.disabled=false}};
+  box.querySelectorAll('[data-m]').forEach(a=>a.onclick=e=>{e.preventDefault();em();SFX.click();loginUI(a.dataset.m)});
+  if($('alater'))$('alater').onclick=()=>$('authov').classList.remove('show');
+  if($('ag'))$('ag').onclick=async()=>{say('Opening Google…');
+    const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:REDIRECT()}});
+    if(error)say(/not enabled|provider/i.test(error.message)?'Google sign-in is not switched on yet. Use email for now.':error.message,'err')};
+  const go=$('ago'),enter=f=>box.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter')f()});
+  const actions={
+    login:()=>busy(go,async()=>{if(!okMail())return;const p=$('ap').value;if(!p)return say('Type your password.','err');say('Logging in…');
+      const{error}=await sb.auth.signInWithPassword({email:em(),password:p});
+      if(error)say(/invalid/i.test(error.message)?'Wrong email or password.':/confirm/i.test(error.message)?'Please confirm your email first (check your inbox).':error.message,'err')}),
+    signup:()=>busy(go,async()=>{if(!okMail())return;const p=$('ap').value;
+      if(p.length<6)return say('Password needs 6+ characters.','err');if(p!==$('ap2').value)return say('Passwords don\'t match.','err');say('Creating account…');
+      const{data,error}=await sb.auth.signUp({email:em(),password:p,options:{emailRedirectTo:REDIRECT()}});
+      if(error)return say(error.message,'err');
+      if(!data.session){say('📬 Almost done! Open the email we sent to confirm, then log in here with your password.','ok');SFX.key()}}),
+    forgot:()=>busy(go,async()=>{if(!okMail())return;say('Sending…');
+      const{error}=await sb.auth.resetPasswordForEmail(em(),{redirectTo:REDIRECT()});
+      error?say(error.message,'err'):(say('📬 Reset link sent. Open it on the device where you want to play.','ok'),SFX.key())}),
+    code:()=>busy(go,async()=>{if(!okMail())return;say('Sending…');
+      const{error}=await sb.auth.signInWithOtp({email:em(),options:{emailRedirectTo:REDIRECT()}});
+      if(error)return say(error.message,'err');
+      $('codebox').hidden=false;go.textContent='RESEND';$('ac').focus();say('📬 Sent! Type the 6-digit code from the email.','ok');SFX.key();
+      const verify=()=>busy($('av'),async()=>{const tk=$('ac').value.replace(/\D/g,'');if(tk.length<6)return say('The code has 6 digits.','err');say('Checking…');
+        const{error}=await sb.auth.verifyOtp({email:em(),token:tk,type:'email'});
+        if(error)say(/expired|invalid/i.test(error.message)?'Wrong or expired code. Press RESEND.':error.message,'err')});
+      $('av').onclick=verify;$('ac').onkeydown=e=>{if(e.key==='Enter')verify()}}),
+    newpass:()=>busy(go,async()=>{const p=$('ap').value;if(p.length<6)return say('Password needs 6+ characters.','err');
+      const{error}=await sb.auth.updateUser({password:p});
+      if(error)return say(error.message,'err');recovering=false;say('✔ Password saved. You are logged in.','ok');SFX.key();setTimeout(authUI,1200)}),
+  };
+  go.onclick=actions[mode];enter(actions[mode]);
+  setTimeout(()=>{const f=box.querySelector('input:not([value]):not([type=hidden])')||box.querySelector('input');f&&f.focus()},50);
+}
+
+// ================= LEADERBOARDS =================
+const NAME_OK=/^[A-Za-z0-9_ -]{2,16}$/;
+const slug=i=>i===EI?'endless':LEVELS[i].name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function scoreRow(i){
+  if(i===EI)return prog.endless.best>0?{user_id:user.id,level:'endless',name:prog.name,ticks:1,lines:1,streak:prog.endless.best,updated_at:new Date().toISOString()}:null;
+  const b=prog.best[i];return b?{user_id:user.id,level:slug(i),name:prog.name,ticks:Math.min(b.t,5000),lines:Math.min(b.l,500),streak:0,updated_at:new Date().toISOString()}:null}
+async function myRank(i){
+  let q=sb.from('scores').select('user_id',{count:'exact',head:true}).eq('level',slug(i));
+  if(i===EI)q=q.gt('streak',prog.endless.best);
+  else{const b=prog.best[i];q=q.or(`ticks.lt.${b.t},and(ticks.eq.${b.t},lines.lt.${b.l})`)}
+  const{count,error}=await q;return error?null:count+1}
+async function submitScore(i){
+  if(!sb||!user||!prog.name)return;const row=scoreRow(i);if(!row)return;
+  const{error}=await sb.from('scores').upsert(row);if(error)return;
+  const r=await myRank(i);if(r)toast(r<=3?['🥇','🥈','🥉'][r-1]+' Rank #'+r:'🏆 Rank #'+r,
+    `You're <b>#${r}</b> on ${i===EI?'the Endless board':esc(LEVELS[i].name)}. <a href="#" onclick="openLB(${i});return false">See board →</a>`,'yellow')}
+async function backfillScores(){
+  if(!sb||!user||!prog.name)return;
+  const rows=[...LEVELS.map((_,i)=>i),EI].map(scoreRow).filter(Boolean);
+  if(rows.length)await sb.from('scores').upsert(rows)}
+async function openLB(i){
+  if(i==null)i=cur;SFX.click();
+  const box=$('authc'),isE=i===EI,title=isE?'Endless Bot':LEVELS[i].name;
+  box.innerHTML=`<h2>🏆 ${esc(title)}</h2><p>${isE?'Longest bot streak.':'Fewest ticks wins. Fewer lines breaks ties.'}</p><div id="lbbody">Loading…</div>`;
+  $('authov').querySelector('.bar span').textContent='🏆 Leaderboard.exe';$('authov').classList.add('show');
+  if(!sb){$('lbbody').textContent='Leaderboards are offline.';return}
+  let q=sb.from('scores').select('user_id,name,ticks,lines,streak').eq('level',slug(i)).limit(10);
+  q=isE?q.order('streak',{ascending:false}).order('updated_at'):q.order('ticks').order('lines').order('updated_at');
+  const{data,error}=await q;
+  if(error){$('lbbody').textContent='Could not load the board. Try again later.';return}
+  const rows=(data||[]).map((r,k)=>`<tr class="${user&&r.user_id===user.id?'me':''}"><td>${['🥇','🥈','🥉'][k]||'#'+(k+1)}</td><td>${esc(r.name)}</td>
+    <td>${isE?`<b>${r.streak}</b> heists`:`<b>${r.ticks}</b>t · ${r.lines}l`}</td></tr>`).join('');
+  let foot='';
+  if(!user)foot=`<p class="lbnote">Want your name here? <a href="#" onclick="authUI();$('authov').querySelector('.bar span').textContent='💾 Cloud_Save.exe';return false">Sign in</a> and beat this job.</p>`;
+  else if(!(data||[]).some(r=>r.user_id===user.id)&&scoreRow(i)){const r=await myRank(i);if(r)foot=`<p class="lbnote">You: <b>#${r}</b> (${isE?prog.endless.best+' heists':prog.best[i].t+'t · '+prog.best[i].l+'l'})</p>`}
+  else if(!scoreRow(i))foot=`<p class="lbnote">Beat this ${isE?'mode':'job'} to get on the board.</p>`;
+  $('lbbody').innerHTML=(rows?`<table class="lb">${rows}</table>`:'<p>No one yet. Be the first! 👀</p>')+foot}
+function toast(title,body,col){
+  const t=document.createElement('div');t.className='toast';
+  t.innerHTML=`<div class="bar ${col||'yellow'}"><span>${title}</span><span class="ctl"><i class="x">×</i></span></div><div class="t">${body}</div>`;
+  t.querySelector('.x').onclick=()=>t.remove();$('toasts').appendChild(t);setTimeout(()=>t.remove(),6000)}
+$('acct').onclick=()=>{SFX.click();$('authov').querySelector('.bar span').textContent='💾 Cloud_Save.exe';authUI();$('authov').classList.add('show')};
 $('authx').onclick=()=>$('authov').classList.remove('show');
 if(window.supabase&&!SB_URL.startsWith('YOUR')){
   sb=window.supabase.createClient(SB_URL,SB_KEY);setAcct(null);
   sb.auth.onAuthStateChange((ev,session)=>{const was=user&&user.id;user=session?session.user:null;setAcct(null);
+    if(ev==='PASSWORD_RECOVERY'){recovering=true;setTimeout(()=>{$('authov').querySelector('.bar span').textContent='💾 Cloud_Save.exe';loginUI('newpass');$('authov').classList.add('show')},300)}
     if(user&&user.id!==was)cloudPull();
     if($('authov').classList.contains('show'))authUI()});
 }
